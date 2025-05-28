@@ -14,8 +14,8 @@ export class TrackService {
     {
       id: '187a93f2-adcb-4dc4-9958-6ff02cd2fc58',
       name: 'Lalala',
-      artistId: null,
-      albumId: null,
+      artistId: '70c493fe-a584-41f6-af50-c71ead76ce63',
+      albumId: '4648a2ef-aa53-4363-87e6-c1af63f9e983',
       duration: 185,
     },
     {
