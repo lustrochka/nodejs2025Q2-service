@@ -7,7 +7,7 @@ dotenv.config();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const PORT = process.env.PORT;
+  const PORT = process.env.PORT || 4000;
 
   app.useGlobalPipes(
     new ValidationPipe({
