@@ -6,9 +6,16 @@ import {
 import { Artist } from './artist.interface';
 import { v4, validate } from 'uuid';
 import { CreateArtistDto } from './create-artist.dto';
+import { TrackService } from 'src/track/track.service';
+import { AlbumService } from 'src/album/album.service';
 
 @Injectable()
 export class ArtistService {
+  constructor(
+    private trackService: TrackService,
+    private albumService: AlbumService,
+  ) {}
+
   private artists = [
     {
       id: 'f308395a-a406-4a19-8977-f5d0784715ff',
@@ -68,5 +75,7 @@ export class ArtistService {
     if (targetArtist === -1)
       throw new NotFoundException('Artist does not exist');
     this.artists.splice(targetArtist, 1);
+    this.trackService.separateTrack(id, 'artistId');
+    this.albumService.separateTrack(id);
   }
 }

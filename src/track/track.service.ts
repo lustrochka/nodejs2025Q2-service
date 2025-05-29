@@ -74,4 +74,10 @@ export class TrackService {
     if (targetUser === -1) throw new NotFoundException('User does not exist');
     this.tracks.splice(targetUser, 1);
   }
+
+  separateTrack(id: string, key) {
+    this.tracks.forEach((track) => {
+      if (track[key] === id) track[key] = null;
+    });
+  }
 }

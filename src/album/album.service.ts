@@ -6,9 +6,12 @@ import {
 import { Album } from './album.interface';
 import { v4, validate } from 'uuid';
 import { CreateAlbumDto } from './create-album.dto';
+import { TrackService } from 'src/track/track.service';
 
 @Injectable()
 export class AlbumService {
+  constructor(private trackService: TrackService) {}
+
   private albums = [
     {
       id: 'cd5253a2-c29f-49d9-9d88-a7b4f9094595',
@@ -69,5 +72,12 @@ export class AlbumService {
     const targetAlbum = this.albums.findIndex((album) => album.id === id);
     if (targetAlbum === -1) throw new NotFoundException('Album does not exist');
     this.albums.splice(targetAlbum, 1);
+    this.trackService.separateTrack(id, 'albumId');
+  }
+
+  separateTrack(id: string) {
+    this.albums.forEach((album) => {
+      if (album.artistId === id) album.artistId = null;
+    });
   }
 }
