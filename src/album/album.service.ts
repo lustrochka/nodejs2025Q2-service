@@ -2,15 +2,17 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  HttpException,
 } from '@nestjs/common';
 import { Album } from './album.interface';
 import { v4, validate } from 'uuid';
 import { CreateAlbumDto } from './create-album.dto';
-import { TrackService } from 'src/track/track.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { OnEvent } from '@nestjs/event-emitter';
 
 @Injectable()
 export class AlbumService {
-  constructor(private trackService: TrackService) {}
+  constructor(private eventEmitter: EventEmitter2) {}
 
   private albums = [
     {
@@ -27,14 +29,20 @@ export class AlbumService {
     },
   ];
 
+  @OnEvent('artist.deleted')
+  handleArtistDelete(id: string) {
+    this.separateAlbum(id);
+  }
+
   getAlbums(): Album[] {
     return this.albums;
   }
 
-  getAlbum(id: string): Album {
+  getAlbum(id: string, errorCode = 404): Album {
     if (!validate(id)) throw new BadRequestException('Invalid id');
     const targetAlbum = this.albums.find((artist) => artist.id === id);
-    if (!targetAlbum) throw new NotFoundException('Album does not exist');
+    if (!targetAlbum)
+      throw new HttpException('Album does not exist', errorCode);
 
     return targetAlbum;
   }
@@ -72,10 +80,10 @@ export class AlbumService {
     const targetAlbum = this.albums.findIndex((album) => album.id === id);
     if (targetAlbum === -1) throw new NotFoundException('Album does not exist');
     this.albums.splice(targetAlbum, 1);
-    this.trackService.separateTrack(id, 'albumId');
+    this.eventEmitter.emit('album.deleted', id);
   }
 
-  separateTrack(id: string) {
+  separateAlbum(id: string) {
     this.albums.forEach((album) => {
       if (album.artistId === id) album.artistId = null;
     });

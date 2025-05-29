@@ -2,14 +2,18 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  HttpException,
 } from '@nestjs/common';
 import { Track } from './track.interface';
 import { validate } from 'uuid';
 import { CreateTrackDto } from './create-track.dto';
 import { v4 } from 'uuid';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { OnEvent } from '@nestjs/event-emitter';
 
 @Injectable()
 export class TrackService {
+  constructor(private eventEmitter: EventEmitter2) {}
   private tracks = [
     {
       id: '187a93f2-adcb-4dc4-9958-6ff02cd2fc58',
@@ -27,14 +31,25 @@ export class TrackService {
     },
   ];
 
+  @OnEvent('album.deleted')
+  handleAlbumDelete(id: string) {
+    this.separateTrack(id, 'albumId');
+  }
+
+  @OnEvent('artist.deleted')
+  handleArtistDelete(id: string) {
+    this.separateTrack(id, 'artistId');
+  }
+
   getTracks(): Track[] {
     return this.tracks;
   }
 
-  getTrack(id: string): Track {
+  getTrack(id: string, errorCode = 404): Track {
     if (!validate(id)) throw new BadRequestException('Invalid id');
     const targetTrack = this.tracks.find((track) => track.id === id);
-    if (!targetTrack) throw new NotFoundException('Track does not exist');
+    if (!targetTrack)
+      throw new HttpException('Track does not exist', errorCode);
 
     return targetTrack;
   }
@@ -73,6 +88,7 @@ export class TrackService {
     const targetUser = this.tracks.findIndex((user) => user.id === id);
     if (targetUser === -1) throw new NotFoundException('User does not exist');
     this.tracks.splice(targetUser, 1);
+    this.eventEmitter.emit('track.deleted', id);
   }
 
   separateTrack(id: string, key) {

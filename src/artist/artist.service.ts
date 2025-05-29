@@ -2,19 +2,16 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  HttpException,
 } from '@nestjs/common';
 import { Artist } from './artist.interface';
 import { v4, validate } from 'uuid';
 import { CreateArtistDto } from './create-artist.dto';
-import { TrackService } from 'src/track/track.service';
-import { AlbumService } from 'src/album/album.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class ArtistService {
-  constructor(
-    private trackService: TrackService,
-    private albumService: AlbumService,
-  ) {}
+  constructor(private eventEmitter: EventEmitter2) {}
 
   private artists = [
     {
@@ -33,10 +30,11 @@ export class ArtistService {
     return this.artists;
   }
 
-  getArtist(id: string): Artist {
+  getArtist(id: string, errorCode = 404): Artist {
     if (!validate(id)) throw new BadRequestException('Invalid id');
     const targetArtist = this.artists.find((artist) => artist.id === id);
-    if (!targetArtist) throw new NotFoundException('Artist does not exist');
+    if (!targetArtist)
+      throw new HttpException('Artist does not exist', errorCode);
 
     return targetArtist;
   }
@@ -75,7 +73,6 @@ export class ArtistService {
     if (targetArtist === -1)
       throw new NotFoundException('Artist does not exist');
     this.artists.splice(targetArtist, 1);
-    this.trackService.separateTrack(id, 'artistId');
-    this.albumService.separateTrack(id);
+    this.eventEmitter.emit('artist.deleted', id);
   }
 }
