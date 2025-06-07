@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   app:
@@ -27,7 +26,7 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_USER: admin
-      POSTGRES_PASSWORD: secret123
+      POSTGRES_PASSWORD: mypassword123
       POSTGRES_DB: myappdb
     volumes:
       - pgdata:/var/lib/postgresql/data
