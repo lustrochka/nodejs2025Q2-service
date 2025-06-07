@@ -14,9 +14,9 @@ export class User {
   @Column()
   version: number;
 
-  @Column()
-  cratedAt: number;
+  @Column({ type: 'bigint' })
+  createdAt: number;
 
-  @Column()
+  @Column({ type: 'bigint' })
   updatedAt: number;
 }
