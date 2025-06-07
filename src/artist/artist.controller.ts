@@ -18,7 +18,7 @@ export class ArtistController {
   constructor(private readonly artistService: ArtistService) {}
 
   @Get()
-  getArtists(): Artist[] {
+  getArtists(): Promise<Artist[]> {
     return this.artistService.getArtists();
   }
 

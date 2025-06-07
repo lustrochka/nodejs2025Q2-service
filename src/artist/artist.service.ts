@@ -8,71 +8,62 @@ import { Artist } from './artist.interface';
 import { v4, validate } from 'uuid';
 import { CreateArtistDto } from './create-artist.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Artist as ArtistEntity } from 'src/db/artist.entity';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class ArtistService {
-  constructor(private eventEmitter: EventEmitter2) {}
+  constructor(
+    @InjectRepository(ArtistEntity)
+    private artistRepo: Repository<Artist>,
+    private eventEmitter: EventEmitter2,
+  ) {}
 
-  private artists = [
-    {
-      id: 'f308395a-a406-4a19-8977-f5d0784715ff',
-      name: 'Some mediocrity',
-      grammy: false,
-    },
-    {
-      id: '70c493fe-a584-41f6-af50-c71ead76ce63',
-      name: 'Popular mediocrity',
-      grammy: true,
-    },
-  ];
-
-  getArtists(): Artist[] {
-    return this.artists;
+  async getArtists(): Promise<Artist[]> {
+    return await this.artistRepo.find();
   }
 
-  getArtist(id: string, errorCode = 404): Artist {
+  async getArtist(id: string, errorCode = 404): Promise<Artist> {
     if (!validate(id)) throw new BadRequestException('Invalid id');
-    const targetArtist = this.artists.find((artist) => artist.id === id);
+    const targetArtist = await this.artistRepo.findOne({ where: { id } });
     if (!targetArtist)
       throw new HttpException('Artist does not exist', errorCode);
 
     return targetArtist;
   }
 
-  createArtist(CreateTrackDto: CreateArtistDto): Artist {
+  async createArtist(CreateTrackDto: CreateArtistDto): Promise<Artist> {
     const { name, grammy } = CreateTrackDto;
-    const newArtist: Artist = {
+    const newArtist = this.artistRepo.create({
       id: v4(),
       name,
       grammy,
-    };
-    this.artists.push(newArtist);
+    });
 
-    return newArtist;
+    const savedArtist = await this.artistRepo.save(newArtist);
+
+    return savedArtist;
   }
 
-  updateArtist(updateArtistDto: CreateArtistDto, id: string) {
+  async updateArtist(updateArtistDto: CreateArtistDto, id: string) {
     if (!validate(id)) throw new BadRequestException('Invalid id');
-    const targetArtist = this.artists.findIndex((artist) => artist.id === id);
-    if (targetArtist === -1)
-      throw new NotFoundException('Artist does not exist');
-
-    const existingArtist = this.artists[targetArtist];
+    const targetArtist = await this.artistRepo.findOne({ where: { id } });
+    if (!targetArtist) throw new NotFoundException('Artist does not exist');
 
     const updatedArtist: Artist = {
-      ...existingArtist,
+      ...targetArtist,
       ...updateArtistDto,
     };
 
-    return updatedArtist;
+    return await this.artistRepo.save(updatedArtist);
   }
 
-  deleteArtist(id: string) {
+  async deleteArtist(id: string) {
     if (!validate(id)) throw new BadRequestException('Invalid id');
-    const targetArtist = this.artists.findIndex((artist) => artist.id === id);
-    if (targetArtist === -1)
+    const res = await this.artistRepo.delete(id);
+    if (res.affected === 0)
       throw new NotFoundException('Artist does not exist');
-    this.artists.splice(targetArtist, 1);
     this.eventEmitter.emit('artist.deleted', id);
   }
 }
