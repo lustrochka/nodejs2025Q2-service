@@ -9,83 +9,73 @@ import { v4, validate } from 'uuid';
 import { CreateAlbumDto } from './create-album.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OnEvent } from '@nestjs/event-emitter';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Album as AlbumEntity } from 'src/db/album.entity';
 
 @Injectable()
 export class AlbumService {
-  constructor(private eventEmitter: EventEmitter2) {}
-
-  private albums = [
-    {
-      id: 'cd5253a2-c29f-49d9-9d88-a7b4f9094595',
-      name: 'Album',
-      year: 2000,
-      artistId: null,
-    },
-    {
-      id: '4648a2ef-aa53-4363-87e6-c1af63f9e983',
-      name: 'New Album',
-      year: 2025,
-      artistId: '70c493fe-a584-41f6-af50-c71ead76ce63',
-    },
-  ];
+  constructor(
+    @InjectRepository(AlbumEntity)
+    private albumRepo: Repository<Album>,
+    private eventEmitter: EventEmitter2,
+  ) {}
 
   @OnEvent('artist.deleted')
-  handleArtistDelete(id: string) {
-    this.separateAlbum(id);
+  async handleArtistDelete(id: string) {
+    await this.albumRepo
+      .createQueryBuilder()
+      .update(AlbumEntity)
+      .set({ artistId: null })
+      .where('artistId = :id', { id })
+      .execute();
   }
 
-  getAlbums(): Album[] {
-    return this.albums;
+  async getAlbums(): Promise<Album[]> {
+    return await this.albumRepo.find();
   }
 
-  getAlbum(id: string, errorCode = 404): Album {
+  async getAlbum(id: string, errorCode = 404): Promise<Album> {
     if (!validate(id)) throw new BadRequestException('Invalid id');
-    const targetAlbum = this.albums.find((artist) => artist.id === id);
+    const targetAlbum = await this.albumRepo.findOne({ where: { id } });
     if (!targetAlbum)
       throw new HttpException('Album does not exist', errorCode);
 
     return targetAlbum;
   }
 
-  createAlbum(CreateTrackDto: CreateAlbumDto): Album {
+  async createAlbum(CreateTrackDto: CreateAlbumDto): Promise<Album> {
     const { name, year, artistId } = CreateTrackDto;
-    const newAlbum: Album = {
+    const newAlbum = this.albumRepo.create({
       id: v4(),
       name,
       year,
       artistId,
-    };
-    this.albums.push(newAlbum);
+    });
 
-    return newAlbum;
+    const savedAlbum = await this.albumRepo.save(newAlbum);
+
+    return savedAlbum;
   }
 
-  updateAlbum(updateAlbumDto: CreateAlbumDto, id: string) {
+  async updateAlbum(updateAlbumDto: CreateAlbumDto, id: string) {
     if (!validate(id)) throw new BadRequestException('Invalid id');
-    const targetAlbum = this.albums.findIndex((album) => album.id === id);
-    if (targetAlbum === -1) throw new NotFoundException('Album does not exist');
-
-    const existingAlbum = this.albums[targetAlbum];
+    const targetAlbum = await this.albumRepo.findOne({ where: { id } });
+    if (!targetAlbum) throw new NotFoundException('Album does not exist');
 
     const updatedAlbum: Album = {
-      ...existingAlbum,
+      ...targetAlbum,
       ...updateAlbumDto,
     };
 
-    return updatedAlbum;
+    return await this.albumRepo.save(updatedAlbum);
   }
 
-  deleteAlbum(id: string) {
+  async deleteAlbum(id: string) {
     if (!validate(id)) throw new BadRequestException('Invalid id');
-    const targetAlbum = this.albums.findIndex((album) => album.id === id);
-    if (targetAlbum === -1) throw new NotFoundException('Album does not exist');
-    this.albums.splice(targetAlbum, 1);
-    this.eventEmitter.emit('album.deleted', id);
-  }
+    const res = await this.albumRepo.delete(id);
+    if (res.affected === 0) throw new NotFoundException('Album does not exist');
 
-  separateAlbum(id: string) {
-    this.albums.forEach((album) => {
-      if (album.artistId === id) album.artistId = null;
-    });
+    this.eventEmitter.emit('album.deleted', id);
   }
 }

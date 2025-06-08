@@ -18,7 +18,7 @@ export class AlbumController {
   constructor(private readonly albumService: AlbumService) {}
 
   @Get()
-  getAlbums(): Album[] {
+  getAlbums(): Promise<Album[]> {
     return this.albumService.getAlbums();
   }
 
