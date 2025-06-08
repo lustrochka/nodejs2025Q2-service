@@ -18,7 +18,7 @@ export class TrackController {
   constructor(private readonly trackService: TrackService) {}
 
   @Get()
-  getTracks(): Track[] {
+  getTracks(): Promise<Track[]> {
     return this.trackService.getTracks();
   }
 
