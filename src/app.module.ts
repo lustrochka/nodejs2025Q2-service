@@ -26,6 +26,7 @@ import { Favorites } from './db/favorite.entity';
       database: process.env.DB_NAME,
       autoLoadEntities: true,
       entities: [User, Artist, Album, Track, Favorites],
+      migrations: [__dirname + '/migrations/*.{ts,js}'],
       synchronize: true,
     }),
     EventEmitterModule.forRoot(),

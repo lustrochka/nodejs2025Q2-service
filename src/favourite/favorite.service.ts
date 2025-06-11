@@ -1,125 +1,116 @@
-import {
-  Injectable,
-  BadRequestException,
-  NotFoundException,
-  Inject,
-  forwardRef,
-} from '@nestjs/common';
-import { Favorite } from './favorite.interface';
+import { Injectable, BadRequestException, HttpException } from '@nestjs/common';
 import { FavoritesResponse } from './favRes.interface';
-import { TrackService } from 'src/track/track.service';
-import { AlbumService } from 'src/album/album.service';
-import { ArtistService } from 'src/artist/artist.service';
 import { validate } from 'uuid';
 import { OnEvent } from '@nestjs/event-emitter';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Favorites } from 'src/db/favorite.entity';
+import { Artist } from 'src/db/artist.entity';
+import { Track } from 'src/db/track.entity';
+import { Album } from 'src/db/album.entity';
 
 @Injectable()
 export class FavoriteService {
   constructor(
-    @Inject(forwardRef(() => ArtistService))
-    private artistService: ArtistService,
-    private trackService: TrackService,
-    private albumService: AlbumService,
+    @InjectRepository(Favorites)
+    private favRepo: Repository<Favorites>,
+    @InjectRepository(Artist)
+    private artistRepo: Repository<Artist>,
+    @InjectRepository(Album)
+    private albumRepo: Repository<Album>,
+    @InjectRepository(Track)
+    private trackRepo: Repository<Track>,
   ) {}
 
-  private favorites: Favorite = {
-    artists: ['70c493fe-a584-41f6-af50-c71ead76ce63'],
-    albums: ['4648a2ef-aa53-4363-87e6-c1af63f9e983'],
-    tracks: [
-      '187a93f2-adcb-4dc4-9958-6ff02cd2fc58',
-      '9872bf42-f783-48d9-b62c-a9f787e8e7ca',
-    ],
-  };
-
   @OnEvent('track.deleted')
-  handleTrackDelete(id: string) {
-    this.favorites.tracks = this.favorites.tracks.filter(
-      (trackId) => trackId !== id,
-    );
+  async handleTrackDelete(id: string) {
+    try {
+      await this.deleteTrack(id);
+    } catch {}
   }
 
   @OnEvent('album.deleted')
-  handleAlbumDelete(id: string) {
-    this.favorites.albums = this.favorites.albums.filter(
-      (albumId) => albumId !== id,
-    );
+  async handleAlbumDelete(id: string) {
+    try {
+      await this.deleteAlbum(id);
+    } catch {}
   }
 
   @OnEvent('artist.deleted')
-  handleArtistDelete(id: string) {
-    this.favorites.artists = this.favorites.artists.filter(
-      (artistId) => artistId !== id,
-    );
+  async handleArtistDelete(id: string) {
+    try {
+      await this.deleteArtist(id);
+    } catch {}
   }
 
-  getFavs(): FavoritesResponse {
-    const result = { artists: [], albums: [], tracks: [] };
-    this.favorites.artists.forEach((id) => {
-      try {
-        result.artists.push(this.artistService.getArtist(id));
-      } catch (err) {
-        console.error(`Artist not found: ${id}`, err.message);
-      }
+  async getFavs(): Promise<FavoritesResponse> {
+    let fav = await this.favRepo.findOne({
+      where: {},
+      relations: ['artists', 'albums', 'tracks'],
     });
-    this.favorites.albums.forEach((id) => {
-      try {
-        result.albums.push(this.albumService.getAlbum(id));
-      } catch (err) {
-        console.error(`Artist not found: ${id}`, err.message);
-      }
-    });
-    this.favorites.tracks.forEach((id) => {
-      try {
-        result.tracks.push(this.trackService.getTrack(id));
-      } catch (err) {
-        console.error(`Artist not found: ${id}`, err.message);
-      }
-    });
-    return result;
+
+    if (!fav) {
+      fav = this.favRepo.create({ artists: [], albums: [], tracks: [] });
+      await this.favRepo.save(fav);
+    }
+    return fav;
   }
 
-  postTrack(id: string) {
-    if (this.trackService.getTrack(id, 422)) this.favorites.tracks.push(id);
-  }
-
-  deleteTrack(id: string) {
-    console.log(this.favorites.tracks, id);
+  async postTrack(id: string) {
     if (!validate(id)) throw new BadRequestException('Invalid id');
-    const targetTrack = this.favorites.tracks.findIndex(
-      (track) => track === id,
-    );
-    if (targetTrack === -1)
-      throw new NotFoundException("Track isn't in favorites");
-    this.favorites.tracks.splice(targetTrack, 1);
+    const track = await this.trackRepo.findOneBy({ id });
+    if (!track) throw new HttpException('Track not found', 422);
+
+    const fav = await this.getFavs();
+    if (!fav.tracks.find((t) => t.id === id)) {
+      fav.tracks.push(track);
+      await this.favRepo.save(fav);
+    }
   }
 
-  postAlbum(id: string) {
-    if (this.albumService.getAlbum(id, 422)) this.favorites.albums.push(id);
-  }
-
-  deleteAlbum(id: string) {
+  async deleteTrack(id: string) {
     if (!validate(id)) throw new BadRequestException('Invalid id');
-    const targetAlbum = this.favorites.albums.findIndex(
-      (album) => album === id,
-    );
-    if (targetAlbum === -1)
-      throw new NotFoundException("Album isn't in favorites");
-    this.favorites.albums.splice(targetAlbum, 1);
+    const fav = await this.getFavs();
+    fav.tracks = fav.tracks.filter((t) => t.id !== id);
+    await this.favRepo.save(fav);
   }
 
-  postArtist(id: string) {
-    this.artistService.getArtist(id, 422);
-    this.favorites.artists.push(id);
+  async postAlbum(id: string) {
+    if (!validate(id)) throw new BadRequestException('Invalid id');
+    const album = await this.albumRepo.findOneBy({ id });
+    if (!album) throw new HttpException('Album not found', 422);
+
+    const fav = await this.getFavs();
+    if (!fav.albums.find((a) => a.id === id)) {
+      fav.albums.push(album);
+      await this.favRepo.save(fav);
+    }
+  }
+
+  async deleteAlbum(id: string) {
+    if (!validate(id)) throw new BadRequestException('Invalid id');
+    const fav = await this.getFavs();
+    fav.albums = fav.albums.filter((a) => a.id !== id);
+    await this.favRepo.save(fav);
+  }
+
+  async postArtist(id: string) {
+    if (!validate(id)) throw new BadRequestException('Invalid id');
+    const artist = await this.artistRepo.findOneBy({ id });
+    if (!artist) throw new HttpException('Artist not found', 422);
+
+    const fav = await this.getFavs();
+    if (!fav.artists.find((a) => a.id === id)) {
+      fav.artists.push(artist);
+      await this.favRepo.save(fav);
+    }
     return { message: 'Artist added to favorites' };
   }
 
-  deleteArtist(id: string) {
+  async deleteArtist(id: string) {
     if (!validate(id)) throw new BadRequestException('Invalid id');
-    const targetArtist = this.favorites.artists.findIndex(
-      (artist) => artist === id,
-    );
-    if (targetArtist === -1)
-      throw new NotFoundException("Artist isn't in favorites");
-    this.favorites.artists.splice(targetArtist, 1);
+    const fav = await this.getFavs();
+    fav.artists = fav.artists.filter((a) => a.id !== id);
+    await this.favRepo.save(fav);
   }
 }

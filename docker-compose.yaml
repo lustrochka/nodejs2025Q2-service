@@ -8,11 +8,10 @@ services:
     ports:
       - "4000:4000"
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: admin
-      DB_PASSWORD: mypassword123
-      DB_NAME: myappdb
+      - DB_HOST=postgres
+      - DB_USER=admin
+      - DB_PASSWORD=mypassword1234
+      - DB_NAME=mydb
     depends_on:
       - postgres
     networks:
@@ -25,9 +24,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: mypassword123
-      POSTGRES_DB: myappdb
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=mypassword1234
+      - POSTGRES_DB=mydb
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
