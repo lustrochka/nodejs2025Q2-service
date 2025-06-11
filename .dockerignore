@@ -1,4 +1,8 @@
 node_modules
+dist
 .env
 .git
 README.md
+*.log
+Dockerfile
+docker-compose.yml

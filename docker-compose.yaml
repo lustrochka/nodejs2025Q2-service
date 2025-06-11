@@ -5,6 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: nestjs-app
+    image: myapp
     ports:
       - "4000:4000"
     environment:
