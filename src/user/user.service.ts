@@ -75,4 +75,8 @@ export class UserService {
     const res = await this.userRepo.delete(id);
     if (res.affected === 0) throw new NotFoundException('User does not exist');
   }
+
+  async findByLogin(login: string): Promise<UserEntity | null> {
+    return this.userRepo.findOne({ where: { login } });
+  }
 }

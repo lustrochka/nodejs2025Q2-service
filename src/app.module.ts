@@ -12,6 +12,7 @@ import { Track } from './db/track.entity';
 import { Album } from './db/album.entity';
 import { Artist } from './db/artist.entity';
 import { Favorites } from './db/favorite.entity';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { Favorites } from './db/favorite.entity';
     ArtistModule,
     AlbumModule,
     FavoriteModule,
+    AuthModule,
   ],
 })
 export class AppModule {}
