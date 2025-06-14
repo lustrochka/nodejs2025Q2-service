@@ -2,7 +2,7 @@ import { UserService } from 'src/user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { Injectable } from '@nestjs/common';
 import { CreateUserDto } from 'src/user/create-user.dto';
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -21,5 +21,13 @@ export class AuthService {
       login: signUpData.login,
       password: hashedPass,
     });
+  }
+
+  async login(loginData: CreateUserDto) {
+    const user = await this.userService.findByLogin(loginData.login);
+    if (!user) throw new ForbiddenException('User does not exist');
+
+    const passMatch = bcrypt.compare(loginData.password, user.password);
+    if (!passMatch) throw new ForbiddenException('Wrong password');
   }
 }
