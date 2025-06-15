@@ -1,5 +1,20 @@
 
 services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - app-network
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: mypassword1234
+      POSTGRES_DB: mydb
+
   app:
     build:
       context: .
@@ -8,28 +23,10 @@ services:
     image: myapp
     ports:
       - "4000:4000"
-    environment:
-      - DB_HOST=postgres
-      - DB_USER=admin
-      - DB_PASSWORD=mypassword1234
-      - DB_NAME=mydb
+    env_file:
+      - .env
     depends_on:
       - postgres
-    networks:
-      - app-network
-
-  postgres:
-    image: postgres:16
-    container_name: postgres-db
-    restart: always
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=mypassword1234
-      - POSTGRES_DB=mydb
-    volumes:
-      - pgdata:/var/lib/postgresql/data
     networks:
       - app-network
 
