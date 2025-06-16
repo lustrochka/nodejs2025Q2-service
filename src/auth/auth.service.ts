@@ -17,10 +17,12 @@ export class AuthService {
     if (existingLogin) throw new ConflictException('Login already exists');
 
     const hashedPass = await bcrypt.hash(signUpData.password, 10);
-    await this.userService.createUser({
+    const user = await this.userService.createUser({
       login: signUpData.login,
       password: hashedPass,
     });
+
+    return { id: user.id, login: user.login };
   }
 
   async login(loginData: CreateUserDto) {
@@ -37,6 +39,6 @@ export class AuthService {
       expiresIn: process.env.TOKEN_EXPIRE_TIME,
     });
 
-    return accessToken;
+    return { accessToken };
   }
 }
